@@ -1,0 +1,13 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Driver {
+  id: ID!
+  location: [Float!]!
+  name: String!
+}
+
+type Query {
+  drivers: [Driver!]!
+}
