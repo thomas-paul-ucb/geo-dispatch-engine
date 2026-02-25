@@ -10,8 +10,22 @@ export class DriversService {
     private driversRepository: Repository<Driver>,
   ) {}
 
-  // A simple dummy query to get the server started
-  async findAll(): Promise<Driver[]> {
-    return this.driversRepository.find();
+  // The "Senior" Spatial Query
+  async findNearby(userLat: number, userLng: number, radiusMeters: number = 2000): Promise<Driver[]> {
+    return this.driversRepository
+      .createQueryBuilder('driver')
+      .where(
+        `ST_DWithin(
+          driver.location, 
+          ST_SetSRID(ST_Point(:lng, :lat), 4326)::geography, 
+          :radius
+        )`,
+        {
+          lng: userLng,
+          lat: userLat,
+          radius: radiusMeters,
+        },
+      )
+      .getMany();
   }
 }

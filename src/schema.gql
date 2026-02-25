@@ -9,5 +9,5 @@ type Driver {
 }
 
 type Query {
-  drivers: [Driver!]!
+  nearbyDrivers(lat: Float!, lng: Float!): [Driver!]!
 }
