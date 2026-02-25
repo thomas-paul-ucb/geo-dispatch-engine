@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Driver, DriverStatus } from './driver.entity';
@@ -6,6 +6,8 @@ import { RedisPubSub } from 'graphql-redis-subscriptions';
 
 @Injectable()
 export class DriversService {
+  private readonly logger = new Logger(DriversService.name); // Create logger instance
+
   constructor(
     @InjectRepository(Driver)
     private driversRepository: Repository<Driver>,
@@ -33,6 +35,8 @@ export class DriversService {
 
   // The "Dispatch" Logic: Find the closest AVAILABLE driver and mark them BUSY
   async requestRide(userLat: number, userLng: number): Promise<Driver | null> {
+    this.logger.log(`Incoming ride request at Lat: ${userLat}, Lng: ${userLng}`);
+
     const closestDriver = await this.driversRepository
       .createQueryBuilder('driver')
       // Only look for Available drivers
@@ -51,6 +55,7 @@ export class DriversService {
       .getOne();
 
     if (!closestDriver) {
+      this.logger.warn(`No drivers found within 5km for Lat: ${userLat}`);
       return null;
     }
 
@@ -62,6 +67,7 @@ export class DriversService {
     // We publish the updated driver to the 'driverUpdated' channel
     this.pubSub.publish('driverUpdated', { driverUpdated: savedDriver });
 
+    this.logger.log(`Driver ${closestDriver.name} (${closestDriver.id}) dispatched successfully`);
     return savedDriver;
   }
 }
