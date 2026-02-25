@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { Driver } from './src/drivers/driver.entity';
+import { Driver, DriverStatus } from './src/drivers/driver.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 const dataSource = new DataSource({
@@ -18,11 +18,10 @@ const seed = async () => {
 
   // Boulder, CO coordinates
   const drivers = [
-    { name: 'Driver Alpha', lat: 40.0076, lng: -105.2659 }, // Near Folsom Field
-    { name: 'Driver Bravo', lat: 40.0150, lng: -105.2705 }, // Pearl St
-    { name: 'Driver Charlie', lat: 40.0067, lng: -105.2323 }, // East Campus
-    { name: 'Driver Delta', lat: 39.9981, lng: -105.2500 }, // Near Baseline
-    { name: 'Driver Echo', lat: 40.0300, lng: -105.2500 }, // North Boulder
+    { name: 'Driver Alpha', lat: 40.0076, lng: -105.2659, status: DriverStatus.AVAILABLE }, // Near Folsom Field
+    { name: 'Driver Bravo', lat: 40.0150, lng: -105.2705, status: DriverStatus.AVAILABLE }, // Pearl St
+    { name: 'Driver Charlie', lat: 40.0067, lng: -105.2323, status: DriverStatus.BUSY }, // East Campus
+    { name: 'Driver Delta', lat: 39.9981, lng: -105.2500, status: DriverStatus.OFFLINE }, // Near Baseline
   ];
 
   for (const d of drivers) {
@@ -36,7 +35,7 @@ const seed = async () => {
     await repository.save(driver);
   }
 
-  console.log('Seeding complete! 5 drivers added to Boulder.');
+  console.log('Seeding complete! 4 drivers added to Boulder.');
   process.exit();
 };
 
