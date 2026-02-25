@@ -21,6 +21,10 @@ enum DriverStatus {
   OFFLINE
 }
 
+type Mutation {
+  requestRide(lat: Float!, lng: Float!): Driver
+}
+
 type Query {
   nearbyDrivers(lat: Float!, lng: Float!): [Driver!]!
 }
