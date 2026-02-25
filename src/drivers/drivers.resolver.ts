@@ -1,10 +1,14 @@
-import { Resolver, Query, Mutation, Args, Float } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Subscription, Args, Float } from '@nestjs/graphql';
+import { Inject } from '@nestjs/common';
+import { RedisPubSub } from 'graphql-redis-subscriptions';
 import { DriversService } from './drivers.service';
 import { Driver } from './driver.entity';
 
 @Resolver(() => Driver)
 export class DriversResolver {
-  constructor(private readonly driversService: DriversService) {}
+  constructor(private readonly driversService: DriversService,
+    @Inject('PUB_SUB') private pubSub: RedisPubSub, // Inject the same board
+  ) {}
 
   // Read: Find many drivers
   @Query(() => [Driver], { name: 'nearbyDrivers' })
@@ -22,5 +26,14 @@ export class DriversResolver {
     @Args('lng', { type: () => Float }) lng: number,
   ) {
     return this.driversService.requestRide(lat, lng);
+  }
+
+  // --- NEW: THE REAL-TIME EAR ---
+  @Subscription(() => Driver, {
+    name: 'driverUpdated',
+  })
+  driverUpdated() {
+    // This tells GraphQL to listen to the 'driverUpdated' channel in Redis
+    return this.pubSub.asyncIterator('driverUpdated');
   }
 }

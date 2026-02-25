@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Driver, DriverStatus } from './driver.entity';
+import { RedisPubSub } from 'graphql-redis-subscriptions';
 
 @Injectable()
 export class DriversService {
   constructor(
     @InjectRepository(Driver)
     private driversRepository: Repository<Driver>,
+    @Inject('PUB_SUB') private pubSub: RedisPubSub,
   ) {}
 
   // Find all drivers within a radius (regardless of status)
@@ -54,8 +56,12 @@ export class DriversService {
 
     // Change status to BUSY
     closestDriver.status = DriverStatus.BUSY;
+    const savedDriver = await this.driversRepository.save(closestDriver); // Save to database
     
-    // Save to database
-    return this.driversRepository.save(closestDriver);
+    // --- NEW: SHOUT TO REDIS ---
+    // We publish the updated driver to the 'driverUpdated' channel
+    this.pubSub.publish('driverUpdated', { driverUpdated: savedDriver });
+
+    return savedDriver;
   }
 }

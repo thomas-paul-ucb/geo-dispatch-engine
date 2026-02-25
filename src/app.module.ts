@@ -21,7 +21,11 @@ import { Driver } from './drivers/driver.entity';
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      sortSchema: true,
+      // Remove installSubscriptionHandlers: true (it's deprecated)
+      subscriptions: {
+        'graphql-ws': true,             // Modern protocol
+        'subscriptions-transport-ws': true, // Legacy protocol (for Playground)
+      },
     }),
     DriversModule,
   ],
