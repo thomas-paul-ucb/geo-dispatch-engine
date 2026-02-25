@@ -1,4 +1,5 @@
 import { Resolver, Query, Mutation, Subscription, Args, Float } from '@nestjs/graphql';
+import { GetNearbyDriversArgs } from './dto/nearby-drivers.args'; // Import new DTO
 import { Inject } from '@nestjs/common';
 import { RedisPubSub } from 'graphql-redis-subscriptions';
 import { DriversService } from './drivers.service';
@@ -12,20 +13,14 @@ export class DriversResolver {
 
   // Read: Find many drivers
   @Query(() => [Driver], { name: 'nearbyDrivers' })
-  async getNearbyDrivers(
-    @Args('lat', { type: () => Float }) lat: number,
-    @Args('lng', { type: () => Float }) lng: number,
-  ) {
-    return this.driversService.findNearby(lat, lng);
+  async getNearbyDrivers(@Args() args: GetNearbyDriversArgs) {
+    return this.driversService.findNearby(args.lat, args.lng);
   }
 
   // Write: Request a ride and match a driver
   @Mutation(() => Driver, { name: 'requestRide', nullable: true })
-  async requestRide(
-    @Args('lat', { type: () => Float }) lat: number,
-    @Args('lng', { type: () => Float }) lng: number,
-  ) {
-    return this.driversService.requestRide(lat, lng);
+  async requestRide(@Args() args: GetNearbyDriversArgs) {
+    return this.driversService.requestRide(args.lat, args.lng);
   }
 
   // --- NEW: THE REAL-TIME EAR ---
