@@ -5,6 +5,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { DriversModule } from './drivers/drivers.module';
 import { Driver } from './drivers/driver.entity';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -28,6 +29,15 @@ import { Driver } from './drivers/driver.entity';
       },
     }),
     DriversModule,
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    BullModule.registerQueue({
+      name: 'dispatch',
+    }),
   ],
 })
 export class AppModule {}

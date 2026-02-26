@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Driver, DriverStatus } from './driver.entity';
 import { RedisPubSub } from 'graphql-redis-subscriptions';
+import { InjectQueue } from '@nestjs/bullmq'; // Add this
+import { Queue } from 'bullmq'; // Add this
 
 @Injectable()
 export class DriversService {
@@ -12,6 +14,7 @@ export class DriversService {
     @InjectRepository(Driver)
     private driversRepository: Repository<Driver>,
     @Inject('PUB_SUB') private pubSub: RedisPubSub,
+    @InjectQueue('dispatch') private dispatchQueue: Queue,
   ) {}
 
   /**
@@ -110,7 +113,17 @@ export class DriversService {
     // STEP 4: Real-time Notification
     this.pubSub.publish('driverUpdated', { driverUpdated: savedDriver });
 
+    // STEP 5: Schedule Timeout (The "Janitor")
+    // This ensures that if the ride isn't completed, the driver is reset to AVAILABLE
+    await this.dispatchQueue.add(
+      'ride-timeout', 
+      { driverId: savedDriver.id },
+      { delay: 60000 } // 1 minute for testing; in production, this might be 30 mins
+    );
+
     this.logger.log(`Redis-Optimized Dispatch: Driver ${savedDriver.name} (${savedDriver.id}) assigned.`);
+    this.logger.log(`Timeout job scheduled for driver ${savedDriver.id}`)
+
     return savedDriver;
   }
 }
