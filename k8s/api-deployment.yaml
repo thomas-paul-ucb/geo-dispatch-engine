@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geo-dispatch-api
+spec:
+  replicas: 2 # High Availability
+  selector:
+    matchLabels:
+      app: geo-dispatch-api
+  template:
+    metadata:
+      labels:
+        app: geo-dispatch-api
+    spec:
+      containers:
+      - name: api
+        image: thomas610/geo-dispatch-api:v1 
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:password@postgres-service:5432/geo_dispatch"
