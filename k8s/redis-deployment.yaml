@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: geo-dispatch-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: geo-dispatch-prod
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
