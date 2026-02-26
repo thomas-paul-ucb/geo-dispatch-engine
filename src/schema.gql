@@ -26,7 +26,14 @@ type Query {
 }
 
 type Mutation {
+  updateDriverLocation(input: UpdateLocationInput!): Boolean!
   requestRide(lat: Float!, lng: Float!): Driver
+}
+
+input UpdateLocationInput {
+  driverId: String!
+  lat: Float!
+  lng: Float!
 }
 
 type Subscription {

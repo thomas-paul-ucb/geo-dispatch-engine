@@ -6,13 +6,42 @@ import { RedisPubSub } from 'graphql-redis-subscriptions';
 
 @Injectable()
 export class DriversService {
-  private readonly logger = new Logger(DriversService.name); // Create logger instance
+  private readonly logger = new Logger(DriversService.name);
 
   constructor(
     @InjectRepository(Driver)
     private driversRepository: Repository<Driver>,
     @Inject('PUB_SUB') private pubSub: RedisPubSub,
   ) {}
+
+  /**
+   * UPDATE LOCATION (The "High Frequency" Write)
+   * We write to Redis for speed and Postgres for persistence.
+   */
+  async updateLocation(driverId: string, lat: number, lng: number): Promise<boolean> {
+    try {
+      // 1. Write to Redis Geospatial Index (The Speed Layer)
+      // This allows us to search for drivers in memory in < 1ms
+      const redis = this.pubSub.getPublisher();
+      await redis.geoadd('driver_locations', lng, lat, driverId);
+
+      // 2. Update Postgres (The Persistence Layer)
+      // We do this so we don't lose the data if Redis restarts
+      await this.driversRepository.update(driverId, {
+        location: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+        lastSeen: new Date(),
+      });
+
+      this.logger.log(`Location updated for driver ${driverId} in Redis & DB`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to update location for driver ${driverId}`, error.stack);
+      return false;
+    }
+  }
 
   // Find all drivers within a radius (regardless of status)
   async findNearby(userLat: number, userLng: number, radiusMeters: number = 2000): Promise<Driver[]> {
@@ -37,11 +66,11 @@ export class DriversService {
   async requestRide(userLat: number, userLng: number): Promise<Driver | null> {
     this.logger.log(`Incoming ride request at Lat: ${userLat}, Lng: ${userLng}`);
 
+    // NOTE: In the next step, we will move this search logic to REDIS for 10x speed.
+    // For now, we are still searching Postgres to verify the "Write" logic works.
     const closestDriver = await this.driversRepository
       .createQueryBuilder('driver')
-      // Only look for Available drivers
       .where('driver.status = :status', { status: DriverStatus.AVAILABLE })
-      // Within 5000 meters (5km)
       .andWhere(
         `ST_DWithin(
           driver.location, 
@@ -50,7 +79,6 @@ export class DriversService {
         )`,
         { lng: userLng, lat: userLat }
       )
-      // Use the <-> PostGIS operator for ultra-fast KNN (Nearest Neighbor) sorting
       .orderBy(`driver.location <-> ST_SetSRID(ST_Point(:lng, :lat), 4326)::geography`, 'ASC')
       .getOne();
 
@@ -59,12 +87,10 @@ export class DriversService {
       return null;
     }
 
-    // Change status to BUSY
     closestDriver.status = DriverStatus.BUSY;
-    const savedDriver = await this.driversRepository.save(closestDriver); // Save to database
+    const savedDriver = await this.driversRepository.save(closestDriver); 
     
-    // --- NEW: SHOUT TO REDIS ---
-    // We publish the updated driver to the 'driverUpdated' channel
+    // Notify subscribers via Redis Pub/Sub
     this.pubSub.publish('driverUpdated', { driverUpdated: savedDriver });
 
     this.logger.log(`Driver ${closestDriver.name} (${closestDriver.id}) dispatched successfully`);

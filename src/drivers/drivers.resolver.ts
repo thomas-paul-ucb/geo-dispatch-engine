@@ -4,6 +4,7 @@ import { Inject } from '@nestjs/common';
 import { RedisPubSub } from 'graphql-redis-subscriptions';
 import { DriversService } from './drivers.service';
 import { Driver } from './driver.entity';
+import { UpdateLocationInput } from './dto/update-location.input'; // Add this import
 
 @Resolver(() => Driver)
 export class DriversResolver {
@@ -15,6 +16,17 @@ export class DriversResolver {
   @Query(() => [Driver], { name: 'nearbyDrivers' })
   async getNearbyDrivers(@Args() args: GetNearbyDriversArgs) {
     return this.driversService.findNearby(args.lat, args.lng);
+  }
+
+  @Mutation(() => Boolean, { name: 'updateDriverLocation' })
+  async updateDriverLocation(
+    @Args('input') input: UpdateLocationInput,
+  ) {
+    return this.driversService.updateLocation(
+      input.driverId,
+      input.lat,
+      input.lng,
+    );
   }
 
   // Write: Request a ride and match a driver
